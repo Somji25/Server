@@ -7,7 +7,7 @@ import ssl
 app = Flask(__name__)
 
 # MQTT Config
-MQTT_BROKER = "e3b73ee9a52a44a0837e55b8c438ba5a.s1.eu.hivemq.cloud"
+MQTT_BROKER = "mqtt://e3b73ee9a52a44a0837e55b8c438ba5a.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
 MQTT_USERNAME = "Test35"
 MQTT_PASSWORD = "Ab123456"
