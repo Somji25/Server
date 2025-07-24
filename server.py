@@ -6,8 +6,8 @@ import ssl
 
 app = Flask(__name__)
 
-# MQTT Config
-MQTT_BROKER = "mqtt://e3b73ee9a52a44a0837e55b8c438ba5a.s1.eu.hivemq.cloud"
+# ✅ แก้ Broker URL (ไม่มี mqtt://)
+MQTT_BROKER = "e3b73ee9a52a44a0837e55b8c438ba5a.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
 MQTT_USERNAME = "Test35"
 MQTT_PASSWORD = "Ab123456"
@@ -18,13 +18,15 @@ def publish_to_mqtt(image_base64, filename):
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
     client.connect(MQTT_BROKER, MQTT_PORT)
-    
+
     payload = {
         "filename": filename,
         "image_base64": image_base64
     }
 
-    client.publish(MQTT_TOPIC, json.dumps(payload))
+    result = client.publish(MQTT_TOPIC, json.dumps(payload))
+    print("✅ Publish result code:", result.rc)
+
     client.disconnect()
 
 @app.route("/upload-image", methods=["POST"])
@@ -45,4 +47,3 @@ def upload_image():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
