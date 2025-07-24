@@ -7,10 +7,10 @@ import ssl
 app = Flask(__name__)
 
 # MQTT Config
-MQTT_BROKER = "51f6a7b84b4f42988b29404959b5be96.s1.eu.hivemq.cloud"
+MQTT_BROKER = "517568df1da7443c8a41a0ca6db5b4a0.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
-MQTT_USERNAME = "Test123"
-MQTT_PASSWORD = "Bb12345678"
+MQTT_USERNAME = "Test12"
+MQTT_PASSWORD = "Zxc13245"
 MQTT_TOPIC = "images/uploaded"
 
 def publish_to_mqtt(image_base64, filename):
