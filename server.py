@@ -30,14 +30,20 @@ def encode_image(file_path):
 # ==== API Endpoint ====
 @app.route("/send-image", methods=["POST"])
 def send_image():
-    data = request.json
+    data = request.get_json()
+
+    image_base64 = data.get("image_base64")
     image_path = data.get("image_path")
 
-    if not image_path or not os.path.isfile(image_path):
-        return jsonify({"error": "Invalid or missing image_path"}), 400
+    # ===== Priority: base64 first, then image_path
+    if image_base64:
+        encoded = image_base64
+    elif image_path and os.path.isfile(image_path):
+        encoded = encode_image(image_path)
+    else:
+        return jsonify({"error": "Missing or invalid image_base64 and image_path"}), 400
 
     try:
-        encoded = encode_image(image_path)
         client = setup_mqtt()
         info = client.publish(topic, encoded, retain=True)
         info.wait_for_publish()
