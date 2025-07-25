@@ -32,6 +32,10 @@ client.connect(broker, port)
 client.loop_start()
 time.sleep(2)  # รอให้เชื่อมต่อ
 
+# ==== (Option) ล้าง retained message เดิมใน topic ====
+# ทำครั้งเดียวถ้าต้องการล้าง
+# client.publish(topic, payload=None, retain=True)
+
 # ==== Route รับ POST จาก PowerApps ====
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
@@ -43,8 +47,11 @@ def upload_image():
 
     image_base64 = data['image_base64']
 
-    # ส่งภาพไปยัง MQTT
-    info = client.publish(topic, image_base64, retain=True)
+    # Debug log ดูว่า base64 เปลี่ยนจริงไหม
+    print(f"[{time.strftime('%H:%M:%S')}] Received base64 (preview):", image_base64[:50])
+
+    # ส่งภาพไปยัง MQTT (ไม่มี retain)
+    info = client.publish(topic, image_base64)  # 🔧 retain=True เอาออกแล้ว
     info.wait_for_publish()
 
     if info.is_published():
