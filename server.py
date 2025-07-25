@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 import paho.mqtt.client as mqtt
 import ssl
-import base64
+import time
 
+# ==== Flask App ====
 app = Flask(__name__)
 
 # ==== HiveMQ Cloud Credentials ====
@@ -15,45 +16,42 @@ topic = "test/12"
 # ==== MQTT Setup ====
 client = mqtt.Client()
 client.username_pw_set(username, password)
+
+# ไม่ตรวจสอบ cert (สำหรับทดสอบเท่านั้น)
 client.tls_set(ca_certs=None, certfile=None, keyfile=None, cert_reqs=ssl.CERT_NONE)
 client.tls_insecure_set(True)
 
-def connect_mqtt():
-    def on_connect(client, userdata, flags, rc):
-        if rc == 0:
-            print("✅ Connected to HiveMQ Broker")
-        else:
-            print(f"❌ Connection failed with code {rc}")
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("✅ Connected to HiveMQ Broker")
+    else:
+        print(f"❌ Connection failed with code {rc}")
 
-    client.on_connect = on_connect
-    client.connect(broker, port)
-    client.loop_start()
+client.on_connect = on_connect
+client.connect(broker, port)
+client.loop_start()
+time.sleep(2)  # รอให้เชื่อมต่อ
 
-# ==== Flask route to receive image ====
-@app.route('/upload-image', methods=['POST'])
+# ==== Route รับ POST จาก PowerApps ====
+@app.route('/upload_image', methods=['POST'])
 def upload_image():
     data = request.get_json()
 
+    # ตรวจสอบว่ามีข้อมูลที่ต้องการไหม
     if not data or 'image_base64' not in data:
-        return jsonify({"error": "Missing image_base64"}), 400
+        return jsonify({'error': 'Missing image_base64'}), 400
 
     image_base64 = data['image_base64']
 
-    # ==== Connect and publish to MQTT ====
-    connect_mqtt()
-    
+    # ส่งภาพไปยัง MQTT
     info = client.publish(topic, image_base64, retain=True)
     info.wait_for_publish()
-    
-    client.loop_stop()
-    client.disconnect()
 
     if info.is_published():
-        return jsonify({"message": "✅ Image published successfully"}), 200
+        return jsonify({'message': '✅ Image published to MQTT'}), 200
     else:
-        return jsonify({"message": "❌ Failed to publish"}), 500
+        return jsonify({'message': '❌ Failed to publish image'}), 500
 
+# ==== Start Flask App ====
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=5000)
