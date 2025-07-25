@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import paho.mqtt.client as mqtt
 import ssl
 import base64
-import os
 
 app = Flask(__name__)
 
@@ -11,52 +10,48 @@ broker = "efff4f0d50144b6d92ab49737f0971b7.s1.eu.hivemq.cloud"
 port = 8883
 username = "Test35"
 password = "Ab123456"
-topic = "test/image"
+topic = "test/12"
 
 # ==== MQTT Setup ====
-def setup_mqtt():
-    client = mqtt.Client()
-    client.username_pw_set(username, password)
-    client.tls_set(ca_certs=None, certfile=None, keyfile=None, cert_reqs=ssl.CERT_NONE)
-    client.tls_insecure_set(True)
+client = mqtt.Client()
+client.username_pw_set(username, password)
+client.tls_set(ca_certs=None, certfile=None, keyfile=None, cert_reqs=ssl.CERT_NONE)
+client.tls_insecure_set(True)
+
+def connect_mqtt():
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print("✅ Connected to HiveMQ Broker")
+        else:
+            print(f"❌ Connection failed with code {rc}")
+
+    client.on_connect = on_connect
     client.connect(broker, port)
-    return client
+    client.loop_start()
 
-# ==== Encode image to base64 ====
-def encode_image(file_path):
-    with open(file_path, "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
-
-# ==== API Endpoint ====
-@app.route("/send-image", methods=["POST"])
-def send_image():
+# ==== Flask route to receive image ====
+@app.route('/upload-image', methods=['POST'])
+def upload_image():
     data = request.get_json()
 
-    image_base64 = data.get("image_base64")
-    image_path = data.get("image_path")
+    if not data or 'image_base64' not in data:
+        return jsonify({"error": "Missing image_base64"}), 400
 
-    # ===== Priority: base64 first, then image_path
-    if image_base64:
-        encoded = image_base64
-    elif image_path and os.path.isfile(image_path):
-        encoded = encode_image(image_path)
+    image_base64 = data['image_base64']
+
+    # ==== Connect and publish to MQTT ====
+    connect_mqtt()
+    
+    info = client.publish(topic, image_base64, retain=True)
+    info.wait_for_publish()
+    
+    client.loop_stop()
+    client.disconnect()
+
+    if info.is_published():
+        return jsonify({"message": "✅ Image published successfully"}), 200
     else:
-        return jsonify({"error": "Missing or invalid image_base64 and image_path"}), 400
+        return jsonify({"message": "❌ Failed to publish"}), 500
 
-    try:
-        client = setup_mqtt()
-        info = client.publish(topic, encoded, retain=True)
-        info.wait_for_publish()
-        client.disconnect()
-
-        if info.is_published():
-            return jsonify({"message": "✅ Image sent via MQTT"}), 200
-        else:
-            return jsonify({"error": "❌ Failed to publish"}), 500
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ==== Run Flask ====
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
